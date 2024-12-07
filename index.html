@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузка файла и отображение JSON</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 780px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #4a4a8a;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        input[type="file"] {
+            display: block;
+            margin: 0 auto 10px auto;
+        }
+
+        button {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            display: block;
+            margin: 0 auto;
+        }
+
+        button:hover {
+            background-color: #357ab8;
+        }
+
+        #info-container {
+            margin-top: 10px;
+            font-size: 14px;
+            text-align: center;
+            color: #555;
+        }
+
+        #response-container {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #ffffff;
+            border-radius: 5px;
+            overflow-y: auto;
+        }
+
+        .response-item {
+            padding: 10px;
+            cursor: text; /* Курсор в виде вертикальной линии как у поля ввода */
+            position: relative;
+            display: block; /* Убрали flex */
+            min-height: 30px; /* Минимальная высота строки */
+            overflow-wrap: break-word; /* Разрыв длинных слов */
+            word-break: break-word; /* Перенос слов */
+        }
+
+        .response-item:nth-child(odd) {
+            background-color: #f1f1f1; /* Фон для нечетных строк */
+        }
+
+        .response-item:nth-child(even) {
+            background-color: #e9ecef; /* Фон для четных строк */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Загрузите файл для REST API</h1>
+        <input type="file" id="fileInput" accept=".docx" />
+        <button onclick="uploadFile()">Загрузить и получить JSON</button>
+        <button onclick="analyzeText()">Анализировать текст</button>
+
+        <div id="info-container">Количество строк: 0 | Количество тестов: 0 | Ошибок: 0</div> <!-- Контейнер для отображения количества строк -->
+
+        <div id="response-container"></div>
+    </div>
+
+    <script>
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Пожалуйста, выберите файл.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('https://localhost:7138/api/document/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Ошибка загрузки файла: ' + response.statusText);
+                }
+
+                const jsonResponse = await response.json();
+
+                const responseContainer = document.getElementById('response-container');
+                responseContainer.innerHTML = '';
+
+                // Добавляем строки и считаем их количество
+                jsonResponse.forEach((htmlString) => {
+                    addResponseItem(htmlString, responseContainer);
+                });
+
+                // Обновить количество строк
+                updateCount();
+            } catch (error) {
+                console.error('Ошибка при загрузке файла:', error);
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        // Функция для добавления строки
+        function addResponseItem(content, container) {
+            const div = document.createElement('div');
+            div.className = 'response-item';
+            div.innerHTML = content;
+            div.contentEditable = false;
+
+            // Событие клика для редактирования строки
+            div.addEventListener('click', function () {
+                this.contentEditable = true;
+                this.focus();
+            });
+
+            // Событие потери фокуса, чтобы сохранить изменения и прекратить редактирование
+            div.addEventListener('blur', function () {
+                this.contentEditable = false;
+            });
+
+            container.appendChild(div);
+            updateCount();
+
+            return div;
+        }
+
+        // Функция для обновления количества строк
+        function updateCount() {
+            const responseContainer = document.getElementById('response-container');
+            const infoContainer = document.getElementById('info-container');
+            const count = responseContainer.children.length;
+            infoContainer.textContent = `Количество строк: ${count}`;
+        }
+
+        // Функция для анализа текста
+        function analyzeText() {
+            const responseContainer = document.getElementById('response-container');
+            const text = Array.from(responseContainer.children).map(item => item.textContent).join('\n');
+
+            // Регулярное выражение для поиска вопросов с ответами
+            const questionRegex = /\d+\.\s.*?(?=(?:\d+\.\s|$))/gs;
+            const matches = text.match(questionRegex);
+
+            let questionCount = 0;
+            let errorCount = 0;
+
+            if (matches) {
+                questionCount = matches.length;
+                matches.forEach((question, index) => {
+                    // Регулярное выражение для поиска ответов
+                    const answerRegex = /[A-E]\)/g;
+                    const answers = question.match(answerRegex);
+
+                    // Проверка на наличие 5 вариантов ответов
+                    if (!answers || answers.length !== 5) {
+                        errorCount++;
+                    }
+                });
+            }
+
+            // Обновляем информацию о количестве строк, тестов и ошибок
+            const infoContainer = document.getElementById('info-container');
+            const lineCount = text.split('\n').length;
+            infoContainer.textContent = `Количество строк: ${lineCount} | Количество тестов: ${questionCount} | Ошибок: ${errorCount}`;
+        }
+    </script>
+
+</body>
+</html>
