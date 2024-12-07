@@ -1,0 +1,53 @@
+# Build and release artifacts
+bin/
+obj/
+*.dll
+*.exe
+*.log
+*.sql
+*.sqlite
+*.pdb
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# User-specific files
+*.user
+*.suo
+*.swp
+*.bak
+*.orig
+
+# IDE-specific files
+.vscode/
+.idea/
+*.code-workspace
+*.tsscache
+.vscode/
+.vs/
+_ReSharper*/
+
+# ASP.NET Core files
+appsettings.Development.json
+secrets.json
+
+# Dependency directories
+packages/
+node_modules/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.lock
+
+# Rider and JetBrains IDE
+.idea/
+*.iml
+
+# Visual Studio Code
+.vscode/
+
+# Rider and JetBrains IDE
+.idea/
+*.iml
